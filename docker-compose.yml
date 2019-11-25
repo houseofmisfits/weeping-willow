@@ -1,0 +1,13 @@
+version: "3.7"
+services:
+  weepingwillow:
+    build: ./
+    command: run
+    image: houseofmisfits/weepingwillow:latest
+    container_name: weepingwillow_${BRANCH_NAME}
+    restart: always
+    secrets:
+      - botconfig.yml
+secrets:
+  botconfig.yml:
+    file: ${BOT_CONFIG_FILE}
