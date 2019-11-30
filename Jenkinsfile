@@ -11,7 +11,7 @@ pipeline {
         expression { BRANCH_NAME == 'integration' }
       }
       environment {
-        BOT_CONFIG_FILE = credentials('')
+        BOT_CONFIG_FILE = credentials('53f2dcfc-facc-492b-9f66-8884f25cdaab')
       }
       steps {
         sh 'docker-compose down'
@@ -23,7 +23,7 @@ pipeline {
         expression { BRANCH_NAME == 'master' }
       }
       environment {
-        BOT_CONFIG_FILE = credentials('')
+        BOT_CONFIG_FILE = credentials('53f2dcfc-facc-492b-9f66-8884f25cdaab')
       }
       steps {
         sh 'docker-compose down'
