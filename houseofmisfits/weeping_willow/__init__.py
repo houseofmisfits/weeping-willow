@@ -1,4 +1,4 @@
-__all__ = ['WeepingWillowClient', 'VentingModule']
+__all__ = ['WeepingWillowClient']
 
-from .venting import VentingModule
+
 from .client import WeepingWillowClient

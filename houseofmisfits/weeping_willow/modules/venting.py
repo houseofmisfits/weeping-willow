@@ -1,8 +1,6 @@
-import asyncio
-
 import discord
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import logging
 
@@ -21,13 +19,18 @@ class VentingModule:
         self.deletion_schedules = {}
         self.messages = {}
         self.is_open = True
+        self.add_triggers()
         self.client.loop.create_task(self.run_loop())
+
+    def add_triggers(self):
+        self.client.channel_triggers[self.config['channel_id']] = self.process
 
     def process(self, message: discord.Message):
         deletion_time = message.created_at + timedelta(seconds=self.config['deletion_seconds'])
         self.messages[message.id] = message
         self.deletion_schedules[message.id] = deletion_time
         logger.debug("Message will be deleted at {}".format(deletion_time.isoformat()))
+        return True
 
     async def run_loop(self):
         while self.is_open:

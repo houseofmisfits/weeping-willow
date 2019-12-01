@@ -1,11 +1,9 @@
-import asyncio
-
 import discord
 import yaml
 
 import logging
 
-from houseofmisfits.weeping_willow import VentingModule
+from houseofmisfits.weeping_willow.modules import VentingModule
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -17,19 +15,22 @@ class WeepingWillowClient(discord.Client):
         super(WeepingWillowClient, self).__init__()
         with open(bot_config_path, 'r') as f:
             self.config = yaml.safe_load(f)
-        self.channel_triggers = {
-            self.config['venting']['channel_id']: VentingModule(self)
-        }
+        self.modules = []
+        self.channel_triggers = {}
+        self.set_up_modules()
+
+    def set_up_modules(self):
+        self.modules.append(VentingModule(self))
 
     async def on_message(self, message: discord.Message):
         if message.channel.id in self.channel_triggers:
-            module = self.channel_triggers[message.channel.id]
+            module_fn = self.channel_triggers[message.channel.id]
             logger.debug(
                 "Message ID {0.id} ({0.author.display_name} in {0.channel.name}) triggered module {1}".format(
-                    message, type(module).__name__
+                    message, module_fn.__module__
                 )
             )
-            module.process(message)
+            module_fn(message)
 
     def run(self, *args, **kwargs):
         logger.info("Bot is starting, use {} to invite bot to server".format(
