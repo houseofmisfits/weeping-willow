@@ -6,12 +6,15 @@ import logging
 
 from asyncio import sleep
 
+from houseofmisfits.weeping_willow.modules import Module
+from houseofmisfits.weeping_willow.triggers import ChannelTrigger
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-class VentingModule:
+class VentingModule(Module):
     def __init__(self, client):
         from houseofmisfits.weeping_willow import WeepingWillowClient
         self.client: WeepingWillowClient = client
@@ -19,11 +22,10 @@ class VentingModule:
         self.deletion_schedules = {}
         self.messages = {}
         self.is_open = True
-        self.add_triggers()
         self.client.loop.create_task(self.run_loop())
 
-    def add_triggers(self):
-        self.client.channel_triggers[self.config['channel_id']] = self.process
+    def get_triggers(self):
+        return [ChannelTrigger(self.config['channel_id'], self.process)]
 
     def process(self, message: discord.Message):
         deletion_time = message.created_at + timedelta(seconds=self.config['deletion_seconds'])
