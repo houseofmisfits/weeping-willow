@@ -79,9 +79,5 @@ class WeepingWillowClient(discord.Client):
         for role in guild.roles:
             if role.id in [self.config['tech_role'], self.config['admin_role']]:
                 admin_users += role.members
-        #for user in guild.members:
-            #logger.debug("{}".format(user.id))
-            #if self.config['admin_role'] in user.roles or self.config['tech_role'] in user.roles:
-                #admin_users.append(user)
         logger.debug("Admin members:\n" + "\n".join(str(member.id) for member in admin_users))
         return admin_users
