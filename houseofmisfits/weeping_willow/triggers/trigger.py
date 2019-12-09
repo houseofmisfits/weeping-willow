@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Union
 
 import discord
 
@@ -10,7 +10,7 @@ class Trigger:
         self.trigger_value = trigger_value
         self.action = action
 
-    def evaluate(self, message: discord.Message) -> Callable[[discord.Message], bool]:
+    def evaluate(self, message: discord.Message) -> Union[Callable[[discord.Message], bool], None]:
         raise NotImplementedError()
 
     def __str__(self):

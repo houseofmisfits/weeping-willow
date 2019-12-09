@@ -23,7 +23,6 @@ class WeepingWillowClient(discord.Client):
             self.config = yaml.safe_load(f)
         self.modules = []
         self.triggers: List[Trigger] = []
-        self.set_up_modules()
 
     def set_up_modules(self):
         logger.debug("Setting up modules")
@@ -41,13 +40,16 @@ class WeepingWillowClient(discord.Client):
         logger.debug("Adding trigger {}".format(str(trigger)))
         self.triggers.append(trigger)
 
+    async def on_ready(self):
+        self.set_up_modules()
+
     async def on_message(self, message: discord.Message):
         for trigger in self.triggers:
             triggered_fn = trigger.evaluate(message)
             if triggered_fn:
                 # noinspection PyUnresolvedReferences
                 logger.debug(
-                    "Message ID {0.id} ({0.author.display_name} in {0.channel.name}) triggered module {1}".format(
+                    "Message ID {0.id} ({0.author.display_name} in {0.channel.id}) triggered module {1}".format(
                         message, triggered_fn.__module__
                     )
                 )
@@ -70,3 +72,16 @@ class WeepingWillowClient(discord.Client):
     async def close(self):
         logger.warning("Bot is shutting down")
         await super(WeepingWillowClient, self).close()
+
+    async def get_admin_users(self):
+        guild: discord.Guild = self.get_guild(self.config['guild_id'])
+        admin_users = []
+        for role in guild.roles:
+            if role.id in [self.config['tech_role'], self.config['admin_role']]:
+                admin_users += role.members
+        #for user in guild.members:
+            #logger.debug("{}".format(user.id))
+            #if self.config['admin_role'] in user.roles or self.config['tech_role'] in user.roles:
+                #admin_users.append(user)
+        logger.debug("Admin members:\n" + "\n".join(str(member.id) for member in admin_users))
+        return admin_users
