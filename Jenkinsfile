@@ -11,9 +11,6 @@ pipeline {
         expression { BRANCH_NAME == 'integration' }
       }
       environment {
-        WILLOW_POSTGRES = credentials('willow_integration_postgres')
-        POSTGRES_USER = '${WILLOW_POSTGRES_USR}'
-        POSTGRES_PASSWORD = '${WILLOW_POSTGRES_PSW}'
         POSTGRES_HOST = 'postgres'
         BOT_CLIENT_ID = '648333906168381460'
         BOT_CLIENT_TOKEN = credentials('willow_integration_bot_token')
@@ -23,7 +20,13 @@ pipeline {
       }
       steps {
         sh 'docker-compose down'
-        sh 'docker-compose up -d'
+        withCredentials([usernamePassword(
+            credentialsId: 'willow_integration_postgres',
+            usernameVariable: 'POSTGRES_USER',
+            passwordVariable: 'POSTGRES_PASSWORD')
+        ]) {
+            sh 'docker-compose up -d'
+        }
       }
     }
     stage('Deploy Master'){
@@ -31,9 +34,6 @@ pipeline {
         expression { BRANCH_NAME == 'master' }
       }
       environment {
-        WILLOW_POSTGRES = credentials('willow_postgres')
-        POSTGRES_USER = '${WILLOW_POSTGRES_USR}'
-        POSTGRES_PASSWORD = '${WILLOW_POSTGRES_PSW}'
         POSTGRES_HOST = 'postgres'
         BOT_CLIENT_ID = '653430328177852416'
         BOT_CLIENT_TOKEN = credentials('willow_bot_token')
@@ -43,7 +43,13 @@ pipeline {
       }
       steps {
         sh 'docker-compose down'
-        sh 'docker-compose up -d'
+        withCredentials([usernamePassword(
+            credentialsId: 'willow_postgres',
+            usernameVariable: 'POSTGRES_USER',
+            passwordVariable: 'POSTGRES_PASSWORD')
+        ]) {
+            sh 'docker-compose up -d'
+        }
       }
     }
   }
