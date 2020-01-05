@@ -1,2 +1,4 @@
 discord
 pyyaml
+asyncpg
+pynacl

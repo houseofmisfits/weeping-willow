@@ -1,8 +1,9 @@
 from typing import List, ClassVar
 from houseofmisfits.weeping_willow.triggers import Trigger
+from houseofmisfits.weeping_willow import WeepingWillowDataConnection
 
 import discord
-import yaml
+import os
 
 import logging
 
@@ -17,14 +18,15 @@ class WeepingWillowClient(discord.Client):
     """
     House of Misfits Weeping Willow Bot. Contains specific integrations for House of Misfits.
     """
-    def __init__(self, bot_config_path='botconfig.yml'):
+    def __init__(self):
         super(WeepingWillowClient, self).__init__()
-        with open(bot_config_path, 'r') as f:
-            self.config = yaml.safe_load(f)
+        self.data_connection = WeepingWillowDataConnection(self)
+        self.get_config = self.data_connection.get_config
+        self.set_config = self.data_connection.set_config
         self.modules = []
         self.triggers: List[Trigger] = []
 
-    def set_up_modules(self):
+    async def set_up_modules(self):
         logger.debug("Setting up modules")
         # Remember that trigger processing is first-come, first-serve! If there is any kind of conflict, the first
         # module registered takes precedence.
@@ -33,19 +35,20 @@ class WeepingWillowClient(discord.Client):
             module = module_class(self)
             self.modules.append(module)
             logger.debug("Added module: {}".format(module_class.__name__))
-            for trigger in module.get_triggers():
-                self.add_trigger(trigger)
+            async for trigger in module.get_triggers():
+                if trigger is not None:
+                    self.add_trigger(trigger)
 
     def add_trigger(self, trigger: Trigger):
         logger.debug("Adding trigger {}".format(str(trigger)))
         self.triggers.append(trigger)
 
     async def on_ready(self):
-        self.set_up_modules()
+        await self.set_up_modules()
 
     async def on_message(self, message: discord.Message):
         for trigger in self.triggers:
-            triggered_fn = trigger.evaluate(message)
+            triggered_fn = await trigger.evaluate(message)
             if triggered_fn:
                 # noinspection PyUnresolvedReferences
                 logger.debug(
@@ -53,7 +56,7 @@ class WeepingWillowClient(discord.Client):
                         message, triggered_fn.__module__
                     )
                 )
-                if triggered_fn(message):
+                if await triggered_fn(message):
                     return
                 # noinspection PyUnresolvedReferences
                 logger.debug("Message {0.id}: {1} did not report successful processing. Continuing processing.".format(
@@ -63,21 +66,33 @@ class WeepingWillowClient(discord.Client):
     def run(self, *args, **kwargs):
         logger.info("Bot is starting, use {} to invite bot to server".format(
             discord.utils.oauth_url(
-                client_id=self.config['client_id'],
+                client_id=os.getenv('BOT_CLIENT_ID'),
                 permissions=discord.Permissions(8)
             )
         ))
-        super(WeepingWillowClient, self).run(self.config['client_token'], *args, **kwargs)
+        self.data_connection.connect()
+        logger.info("Successfully connected to internal database")
+        super(WeepingWillowClient, self).run(os.getenv('BOT_CLIENT_TOKEN'), *args, **kwargs)
 
     async def close(self):
         logger.warning("Bot is shutting down")
+        await self.data_connection.close()
         await super(WeepingWillowClient, self).close()
 
     async def get_admin_users(self):
-        guild: discord.Guild = self.get_guild(self.config['guild_id'])
+        guild_id = os.getenv('BOT_GUILD_ID')
+        if guild_id is None:
+            logger.warning("Cannot get admin users - Guild ID not set")
+            return
+        tech_role = int(os.getenv('BOT_TECH_ROLE'))
+        admin_role = int(os.getenv('BOT_ADMIN_ROLE'))
+        if tech_role is None and admin_role is None:
+            logger.warning("Cannot get admin users - no admin/tech role set")
+            return
+        guild: discord.Guild = self.get_guild(int(guild_id))
         admin_users = []
         for role in guild.roles:
-            if role.id in [self.config['tech_role'], self.config['admin_role']]:
+            if role.id in [tech_role, admin_role]:
                 admin_users += role.members
         logger.debug("Admin members:\n" + "\n".join(str(member.id) for member in admin_users))
         return admin_users
