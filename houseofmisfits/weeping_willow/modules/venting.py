@@ -20,18 +20,24 @@ class VentingModule(Module):
     def __init__(self, client):
         from houseofmisfits.weeping_willow import WeepingWillowClient
         self.client: WeepingWillowClient = client
-        self.config = client.config['venting']
         self.deletion_schedules = {}
         self.messages = {}
         self.is_open = True
         self.scan_time = datetime.now()
         self.client.loop.create_task(self.run_loop())
 
-    def get_triggers(self):
-        return [ChannelTrigger(self.config['channel_id'], self.process)]
+    async def get_triggers(self):
+        venting_channel = await self.client.get_config('venting_channel')
+        if venting_channel is None:
+            logger.warning("Venting channel is not set, venting module will not work.")
+            self.is_open = False
+            # TODO: Handle venting_channel config change
+        else:
+            yield ChannelTrigger(venting_channel, self.process)
 
-    def process(self, message: discord.Message):
-        deletion_time = message.created_at + timedelta(seconds=self.config['deletion_seconds'])
+    async def process(self, message: discord.Message):
+        deletion_seconds = int(await self.client.get_config('venting_deletion_seconds', '300'))
+        deletion_time = message.created_at + timedelta(seconds=deletion_seconds)
         self.messages[message.id] = message
         self.deletion_schedules[message.id] = deletion_time
         logger.debug("Message will be deleted at {}".format(deletion_time.isoformat()))
@@ -60,11 +66,13 @@ class VentingModule(Module):
 
     async def scan_messages(self):
         logger.debug("Scanning for missed messages")
-        channel: TextChannel = await self.client.fetch_channel(self.config['channel_id'])
+        venting_channel = await self.client.get_config('venting_channel')
+        if venting_channel is None:
+            return
+        channel: TextChannel = await self.client.fetch_channel(int(venting_channel))
         async for message in channel.history(limit=200):
             if message.id not in self.deletion_schedules:
                 logger.debug("Found message {} not scheduled for deletion, adding to queue".format(
                     message.id
                 ))
-                self.process(message)
-
+                await self.process(message)

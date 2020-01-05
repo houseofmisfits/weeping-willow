@@ -5,9 +5,26 @@ services:
     command: run
     image: houseofmisfits/weepingwillow:latest
     container_name: weepingwillow_${BRANCH_NAME}
+    depends_on:
+      - postgres
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_HOST
+      - BOT_CLIENT_ID
+      - BOT_CLIENT_TOKEN
+      - BOT_TECH_ROLE
+      - BOT_ADMIN_ROLE
+      - BOT_GUILD_ID
     restart: always
-    secrets:
-      - botconfig.yml
-secrets:
-  botconfig.yml:
-    file: ${BOT_CONFIG_FILE}
+  postgres:
+    image: postgres:alpine
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  pgdata:

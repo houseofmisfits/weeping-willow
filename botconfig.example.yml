@@ -1,6 +1,0 @@
-client_id: client ID
-client_token: discord client token goes here
-
-venting:
-  channel_id: venting channel id
-  deletion_seconds: how many seconds a venting message should exist

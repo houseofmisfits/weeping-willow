@@ -20,14 +20,16 @@ class DMHandlerModule(Module):
         self.dm_channels = None
         self.client.loop.create_task(self.ensure_dms())
 
-    def get_triggers(self) -> List[Trigger]:
-        return [DMTrigger(self.handle_dm)]
+    async def get_triggers(self) -> List[Trigger]:
+        yield DMTrigger(self.handle_dm)
 
     async def ensure_dms(self):
         """
         Makes sure DM channels exist
         """
         users = await self.client.get_admin_users()
+        if users is None:
+            return
         dm_channels = []
         for user in users:
             dm_channel = user.dm_channel
@@ -37,7 +39,7 @@ class DMHandlerModule(Module):
         self.dm_channels = dm_channels
         logger.debug(str(len(self.dm_channels)) + " users will be notified if the bot is DMed.")
 
-    def handle_dm(self, message) -> bool:
+    async def handle_dm(self, message) -> bool:
         loop = asyncio.get_running_loop()
         loop.create_task(
             message.channel.send("Hello, there! Please do not DM this bot. If you have any questions about House of "
