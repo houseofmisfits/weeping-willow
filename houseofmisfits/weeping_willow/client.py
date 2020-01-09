@@ -39,6 +39,7 @@ class WeepingWillowClient(discord.Client):
 
     async def close(self):
         logger.warning("Bot is shutting down")
+        await self.change_presence(status=discord.Status.invisible)
         await self.data_connection.close()
         await super(WeepingWillowClient, self).close()
 
