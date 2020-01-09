@@ -1,3 +1,5 @@
+from typing import List, Tuple, Callable, Awaitable
+
 import asyncpg
 import asyncio
 import logging
@@ -14,6 +16,7 @@ class WeepingWillowDataConnection:
         self.client = client
         self.pool = None
         self.is_connected = False
+        self.config_change_actions: List[Tuple[str, Callable]] = []
 
     def connect(self):
         logger.debug("Waiting to continue until connected to database")
@@ -83,6 +86,17 @@ class WeepingWillowDataConnection:
                 logger.debug("Config {} set to '{}'".format(key, value))
             except asyncpg.SyntaxOrAccessError:
                 logger.critical("Could not set the requested configuration value. The bot may not function correctly.")
+            actions = [action for watched_key, action in self.config_change_actions if key == watched_key]
+            for action in actions:
+                self.client.loop.create_task(action(key, value))
+
+    async def on_config_change(self, key, callback: Callable[[str, str], Awaitable]):
+        """
+        Configures a coroutine to run when a specific configuration value is set
+        :param key: The configuration key to watch
+        :param callback: A coroutine with two string args (key and value) to run when the config value is set
+        """
+        self.config_change_actions.append((key, callback))
 
     async def build_config_table(self, conn):
         """

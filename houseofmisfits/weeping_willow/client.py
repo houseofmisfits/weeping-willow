@@ -58,11 +58,14 @@ class WeepingWillowClient(discord.Client):
         for module_name in modules.__module_list__:
             module_class: ClassVar[modules.Module] = getattr(modules, module_name)
             module = module_class(self)
-            self.modules.append(module)
+            await self.add_module(module)
             logger.debug("Added module: {}".format(module_class.__name__))
-            async for trigger in module.get_triggers():
-                if trigger is not None:
-                    self.add_trigger(trigger)
+
+    async def add_module(self, module):
+        self.modules.append(module)
+        async for trigger in module.get_triggers():
+            if trigger is not None:
+                self.add_trigger(trigger)
 
     def add_trigger(self, trigger: Trigger):
         logger.debug("Adding trigger {}".format(str(trigger)))
