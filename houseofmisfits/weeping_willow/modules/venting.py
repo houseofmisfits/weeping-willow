@@ -25,15 +25,27 @@ class VentingModule(Module):
         self.is_open = True
         self.scan_time = datetime.now()
         self.client.loop.create_task(self.run_loop())
+        self.trigger = None
 
     async def get_triggers(self):
+        data_connection = self.client.data_connection
+        await data_connection.on_config_change('venting_channel', self.reset_module)
+        await data_connection.on_config_change('venting_deletion_seconds', self.reset_module)
+
         venting_channel = await self.client.get_config('venting_channel')
         if venting_channel is None:
             logger.warning("Venting channel is not set, venting module will not work.")
             self.is_open = False
-            # TODO: Handle venting_channel config change
         else:
-            yield ChannelTrigger(venting_channel, self.process)
+            self.trigger = ChannelTrigger(venting_channel, self.process)
+            yield self.trigger
+
+    async def reset_module(self, key, value):
+        if value is not None:
+            self.client.modules.remove(self)
+            self.client.triggers.remove(self.trigger)
+            self.is_open = False
+            await self.client.add_module(VentingModule(self.client))
 
     async def process(self, message: discord.Message):
         deletion_seconds = int(await self.client.get_config('venting_deletion_seconds', '300'))
@@ -41,7 +53,7 @@ class VentingModule(Module):
         self.messages[message.id] = message
         self.deletion_schedules[message.id] = deletion_time
         logger.debug("Message will be deleted at {}".format(deletion_time.isoformat()))
-        return True
+        return False
 
     async def run_loop(self):
         while self.is_open:

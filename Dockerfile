@@ -14,5 +14,5 @@ RUN ["python", "setup.py", "test"]
 
 RUN ["apk", "del", ".pynacl_deps"]
 
-ENTRYPOINT ["python", "willow.py"]
+ENTRYPOINT ["python", "-m", "houseofmisfits.weeping_willow"]
 CMD "run"

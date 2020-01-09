@@ -70,6 +70,7 @@ class BotAdministrationModule(Module):
                 )
             )
         await message.add_reaction('✅')
+        return True
 
     async def get_config(self, message: discord.message):
         if not await self.test_authorization(message):
@@ -100,5 +101,6 @@ class BotAdministrationModule(Module):
                     color=discord.Color.red()
                 )
             )
+        return True
 
 

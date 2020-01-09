@@ -1,4 +1,4 @@
-__module_list__ = ['VentingModule', 'DMHandlerModule', 'BotAdministrationModule']
+__module_list__ = ['BotAdministration', 'VentingModule', 'DMHandlerModule']
 
 __all__ = ['Module'] + __module_list__
 
