@@ -53,7 +53,7 @@ class VentingModule(Module):
         self.messages[message.id] = message
         self.deletion_schedules[message.id] = deletion_time
         logger.debug("Message will be deleted at {}".format(deletion_time.isoformat()))
-        return True
+        return False
 
     async def run_loop(self):
         while self.is_open:
