@@ -4,6 +4,7 @@ WORKDIR /usr/src/app
 
 RUN ["apk", "update"]
 RUN ["apk", "add", "--no-cache", "--virtual", ".pynacl_deps", "build-base", "python3-dev", "libffi-dev"]
+RUN ["apk", "add", "opus", "ffmpeg"]
 
 ENV TZ='America/New_York'
 

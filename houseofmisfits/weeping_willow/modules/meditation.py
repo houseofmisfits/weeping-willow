@@ -6,6 +6,11 @@ import discord
 from houseofmisfits.weeping_willow.modules import Module
 from houseofmisfits.weeping_willow.triggers import Trigger, Command
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 MEDITATION_SOURCE = 'http://www.freemindfulness.org/MARC5MinuteBreathing.mp3'
 
 
@@ -13,6 +18,10 @@ class MeditationModule(Module):
     def __init__(self, client):
         self.client = client
         self.vc = None
+        try:
+            discord.opus.load_opus("libopus.so.0")
+        except OSError:
+            logger.warning("Could not load opus library. Voice commands may not work")
 
     async def get_triggers(self) -> AsyncIterable[Trigger]:
         yield Command(self.client, 'meditate', self.meditate).get_trigger()
