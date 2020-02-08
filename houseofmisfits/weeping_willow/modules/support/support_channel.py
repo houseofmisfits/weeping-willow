@@ -66,7 +66,7 @@ class SupportChannel:
         overwrites[self.user] = discord.PermissionOverwrite(read_messages=True)
         try:
             channel = await guild.create_text_channel(
-                name="support-{}".format(self.user.name),  # TODO: test spaces / other odd characters
+                name="support-{}".format(self.user.name),
                 overwrites=overwrites,
                 category=category,
                 position=2  # TODO: Where to put new support sessions?
