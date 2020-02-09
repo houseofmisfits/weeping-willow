@@ -112,3 +112,6 @@ class WeepingWillowClient(discord.Client):
             if role.id in [tech_role, admin_role]:
                 admin_users += role.members
         return admin_users
+
+    def acquire_data_connection(self):
+        return self.data_connection.pool.acquire()

@@ -18,7 +18,7 @@ class SupportChannel:
         self.channel = None
 
     @classmethod
-    async def for_user(cls, client, user):
+    async def for_user(cls, user, client):
         self = SupportChannel()
         self.client = client
         self.user = user
@@ -37,7 +37,7 @@ class SupportChannel:
         return channel
 
     async def get_support_channel_id(self):
-        async with self.client.data_connection.pool.acquire() as conn:
+        async with self.client.acquire_data_connection() as conn:
             try:
                 result = await conn.fetchrow(
                     "SELECT channel_id FROM support_session_channels WHERE member_id = $1",
@@ -84,13 +84,17 @@ class SupportChannel:
         return await self.client.fetch_channel(category_id)
 
     async def set_support_channel_id(self, channel_id):
-        async with self.client.data_connection.pool.acquire() as conn, conn.transaction():
+        async with self.client.acquire_data_connection() as conn, conn.transaction():
             await conn.execute("DELETE FROM support_session_channels WHERE member_id = $1", str(self.user.id))
             await conn.execute("INSERT INTO support_session_channels (channel_id, member_id) VALUES ($1, $2)",
                                str(channel_id), str(self.user.id))
 
     async def send(self, *args, **kwargs):
         return await self.channel.send(*args, **kwargs)
+
+    @property
+    def id(self):
+        return self.channel.id
 
     @staticmethod
     async def build_support_session_channels_table(conn):
