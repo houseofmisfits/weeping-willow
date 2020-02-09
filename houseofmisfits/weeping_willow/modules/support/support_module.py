@@ -4,6 +4,7 @@ import logging
 from typing import AsyncIterable
 
 from houseofmisfits.weeping_willow.modules import Module
+from houseofmisfits.weeping_willow.modules.support.support_session import SupportSession
 from houseofmisfits.weeping_willow.triggers import Trigger, Command
 
 from houseofmisfits.weeping_willow.modules.support import SupportChannel, SupportNotAllowedException
@@ -31,10 +32,17 @@ class SupportModule(Module):
 
     async def start_support_session(self, message):
         try:
-            support_channel = await SupportChannel.for_user(self.client, message.author)
-            await support_channel.send(
-                "Hey there, <@{author.id}>, I see you need some support...".format(author=message.author)
-            )
+            session = await SupportSession.for_user(message.author, self.client)
+            if session.brand_new:
+                await session.channel.send(
+                    "Hey there, <@{author.id}>, I see you need some support...".format(author=message.author)
+                )
+            else:
+                await session.channel.send(
+                    "Oops, looks like you already have a session open here, <@{author.id}>!".format(
+                        author=message.author
+                    )
+                )
         except SupportNotAllowedException:
             # TODO: figure out what to do when someone can't initiate a support session
             message.author.ban()
