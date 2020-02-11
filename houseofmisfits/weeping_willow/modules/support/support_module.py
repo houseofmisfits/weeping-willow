@@ -45,7 +45,7 @@ class SupportModule(Module):
                 )
         except SupportNotAllowedException:
             # TODO: figure out what to do when someone can't initiate a support session
-            message.author.ban()
+            pass
 
     async def get_support_channel(self, user):
         pass
