@@ -76,7 +76,7 @@ class SupportChannel:
         guild = await self.client.fetch_guild(guild_id)
         category = await self.get_support_category()
         overwrites = category.overwrites
-        overwrites[self.user] = discord.PermissionOverwrite(read_messages=True)
+        overwrites[self.user] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
         try:
             channel = await guild.create_text_channel(
                 name="support-{}".format(self.user.name),
@@ -94,6 +94,12 @@ class SupportChannel:
         category_id = await self.client.get_config('support_category')
         if category_id is None:
             raise ValueError("support_category is not set")
+        return await self.client.fetch_channel(category_id)
+
+    async def get_support_archive_category(self) -> discord.CategoryChannel:
+        category_id = await self.client.get_config('support_archive_category')
+        if category_id is None:
+            raise ValueError("support_archive_category is not set")
         return await self.client.fetch_channel(category_id)
 
     async def set_support_channel_id(self, channel_id):
@@ -118,6 +124,16 @@ class SupportChannel:
 
     async def send(self, *args, **kwargs):
         return await self.channel.send(*args, **kwargs)
+
+    async def archive(self):
+        category = await self.get_support_archive_category()
+        await self.channel.edit(reason='Archiving support channel', category=category)
+        await self.channel.set_permissions(self.user, send_messages=False, read_messages=True)
+
+    async def unarchive(self):
+        category = await self.get_support_category()
+        await self.channel.edit(reason='Opening support channel', category=category)
+        await self.channel.set_permissions(self.user, send_messages=True, read_messages=True)
 
     @property
     def id(self):

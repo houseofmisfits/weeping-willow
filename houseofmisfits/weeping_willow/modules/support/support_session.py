@@ -89,7 +89,8 @@ class SupportSession:
 
     async def close(self):
         await self.set_status(self.Status.CLOSED)
-        await self.channel.send('This session is now closed. Go away.')
+        await self.channel.archive()
+        await self.channel.send('This session is now closed. Insert helpful message here about being able to read messages')
 
     async def create_timestamp(self):
         return await self._get_value('session_create_ts')

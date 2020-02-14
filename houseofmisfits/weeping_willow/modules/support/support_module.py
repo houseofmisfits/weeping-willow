@@ -34,6 +34,7 @@ class SupportModule(Module):
     async def start_support_session(self, message):
         try:
             session = await SupportSession.for_user(message.author, self.client)
+            await session.channel.unarchive()
             if session.brand_new:
                 await session.channel.send(
                     "Hey there, <@{author.id}>, I see you need some support...".format(author=message.author)
