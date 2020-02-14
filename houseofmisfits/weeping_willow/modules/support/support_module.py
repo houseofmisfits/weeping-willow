@@ -23,6 +23,7 @@ class SupportModule(Module):
 
     async def get_triggers(self) -> AsyncIterable[Trigger]:
         yield Command(self.client, 'support', self.on_support).get_trigger()
+        yield Command(self.client, 'close', self.on_close_request).get_trigger()
 
     async def on_support(self, message: discord.Message):
         loop = asyncio.get_running_loop()
@@ -47,5 +48,45 @@ class SupportModule(Module):
             # TODO: figure out what to do when someone can't initiate a support session
             pass
 
-    async def get_support_channel(self, user):
-        pass
+    async def on_close_request(self, message):
+        try:
+            channel = await SupportChannel.with_channel(message.channel, self.client)
+            await message.delete()
+            if message.author.id == channel.user_id and await self.confirm_user_close(channel):
+                session = await SupportSession.in_channel(channel)
+                await session.close()
+                return True
+            elif self.is_support(message.author):
+                session = await SupportSession.in_channel(channel)
+                await session.close()
+                return True
+            else:
+                logger.debug("Cancelling the closing of support session")
+                return True
+
+        except ValueError:
+            logger.debug(".close command issued in non-support channel, skipping")
+            return False
+
+    async def confirm_user_close(self, support_channel):
+        msg = await support_channel.send("Are you sure you want to close the session?")
+        await msg.add_reaction('✅')
+        await msg.add_reaction('❌')
+        try:
+            reaction, user = await self.client.wait_for(
+                'reaction_add',
+                timeout=30,
+                check=lambda r, u: r.message.id == msg.id and u.id == support_channel.user_id
+            )
+        except asyncio.TimeoutError:
+            await msg.delete()
+            return False
+        await msg.delete()
+        return str(reaction.emoji) == '✅'
+
+    def is_support(self, user):
+        support_role = self.client.get_config('support_role_id')
+        for role in user.roles:
+            if str(role.id) == support_role:
+                return True
+        return False

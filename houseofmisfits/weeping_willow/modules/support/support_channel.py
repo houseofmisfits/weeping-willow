@@ -25,6 +25,14 @@ class SupportChannel:
         self.channel = await self._fetch_channel(None)
         return self
 
+    @classmethod
+    async def with_channel(cls, channel, client):
+        self = SupportChannel()
+        self.client = client
+        self.channel = channel
+        self.user = await self._fetch_user()
+        return self
+
     async def _fetch_channel(self, channel_id):
         if channel_id is not None:
             channel = await self.client.fetch_channel(channel_id)
@@ -35,6 +43,11 @@ class SupportChannel:
         else:
             channel = await self.make_support_channel()
         return channel
+
+    async def _fetch_user(self):
+        user_id = await self.get_user_from_channel_id(self.channel.id)
+        user = await self.client.fetch_user(user_id)
+        return user
 
     async def get_support_channel_id(self):
         async with self.client.acquire_data_connection() as conn:
@@ -89,12 +102,30 @@ class SupportChannel:
             await conn.execute("INSERT INTO support_session_channels (channel_id, member_id) VALUES ($1, $2)",
                                str(channel_id), str(self.user.id))
 
+    async def get_user_from_channel_id(self, channel_id):
+        async with self.client.acquire_data_connection() as conn:
+            try:
+                result = await conn.fetchrow(
+                    "SELECT member_id FROM support_session_channels WHERE channel_id = $1",
+                    str(channel_id)
+                )
+            except asyncpg.UndefinedTableError:
+                await SupportChannel.build_support_session_channels_table(conn)
+                return None
+        if result is None:
+            raise ValueError("Not a support channel")
+        return result['member_id']
+
     async def send(self, *args, **kwargs):
         return await self.channel.send(*args, **kwargs)
 
     @property
     def id(self):
         return self.channel.id
+
+    @property
+    def user_id(self):
+        return self.user.id
 
     @staticmethod
     async def build_support_session_channels_table(conn):
