@@ -87,6 +87,11 @@ class SupportSession:
         """)
         await conn.execute("CREATE INDEX ix_session_dt ON support_session (session_dt)")
 
+    async def close(self):
+        await self.set_status(self.Status.CLOSED)
+        await self.channel.archive()
+        await self.channel.send('This session is now closed. Insert helpful message here about being able to read messages')
+
     async def create_timestamp(self):
         return await self._get_value('session_create_ts')
 
@@ -110,20 +115,20 @@ class SupportSession:
         await self._set_row_value('session_status', status.value)
 
     async def _get_value(self, field):
-        with self.client.acquire_data_connection() as conn:
+        async with self.client.acquire_data_connection() as conn:
             row = await conn.fetchrow(
                 'SELECT {} FROM support_session WHERE session_id = $1'.format(field), self.session_id
             )
             return row[field]
 
     async def _set_to_current_timestamp(self, field):
-        with self.client.acquire_data_connection() as conn:
+        async with self.client.acquire_data_connection() as conn:
             await conn.execute("UPDATE support_session "
                                "SET {} = CURRENT_TIMESTAMP "
                                "WHERE session_id = $1".format(field), self.session_id)
 
     async def _set_row_value(self, field, value):
-        with self.client.acquire_data_connection() as conn:
+        async with self.client.acquire_data_connection() as conn:
             await conn.execute("UPDATE support_session "
                                "SET {} = $2 "
                                "WHERE session_id = $1".format(field), self.session_id, value)

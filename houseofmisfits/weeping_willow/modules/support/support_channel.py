@@ -25,6 +25,14 @@ class SupportChannel:
         self.channel = await self._fetch_channel(None)
         return self
 
+    @classmethod
+    async def with_channel(cls, channel, client):
+        self = SupportChannel()
+        self.client = client
+        self.channel = channel
+        self.user = await self._fetch_user()
+        return self
+
     async def _fetch_channel(self, channel_id):
         if channel_id is not None:
             channel = await self.client.fetch_channel(channel_id)
@@ -35,6 +43,11 @@ class SupportChannel:
         else:
             channel = await self.make_support_channel()
         return channel
+
+    async def _fetch_user(self):
+        user_id = await self.get_user_from_channel_id(self.channel.id)
+        user = await self.client.fetch_user(user_id)
+        return user
 
     async def get_support_channel_id(self):
         async with self.client.acquire_data_connection() as conn:
@@ -63,7 +76,7 @@ class SupportChannel:
         guild = await self.client.fetch_guild(guild_id)
         category = await self.get_support_category()
         overwrites = category.overwrites
-        overwrites[self.user] = discord.PermissionOverwrite(read_messages=True)
+        overwrites[self.user] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
         try:
             channel = await guild.create_text_channel(
                 name="support-{}".format(self.user.name),
@@ -83,18 +96,60 @@ class SupportChannel:
             raise ValueError("support_category is not set")
         return await self.client.fetch_channel(category_id)
 
+    async def get_support_archive_category(self) -> discord.CategoryChannel:
+        category_id = await self.client.get_config('support_archive_category')
+        if category_id is None:
+            raise ValueError("support_archive_category is not set")
+        return await self.client.fetch_channel(category_id)
+
     async def set_support_channel_id(self, channel_id):
         async with self.client.acquire_data_connection() as conn, conn.transaction():
             await conn.execute("DELETE FROM support_session_channels WHERE member_id = $1", str(self.user.id))
             await conn.execute("INSERT INTO support_session_channels (channel_id, member_id) VALUES ($1, $2)",
                                str(channel_id), str(self.user.id))
 
+    async def get_user_from_channel_id(self, channel_id):
+        async with self.client.acquire_data_connection() as conn:
+            try:
+                result = await conn.fetchrow(
+                    "SELECT member_id FROM support_session_channels WHERE channel_id = $1",
+                    str(channel_id)
+                )
+            except asyncpg.UndefinedTableError:
+                await SupportChannel.build_support_session_channels_table(conn)
+                return None
+        if result is None:
+            raise ValueError("Not a support channel")
+        return result['member_id']
+
     async def send(self, *args, **kwargs):
         return await self.channel.send(*args, **kwargs)
+
+    async def archive(self):
+        await self.channel.set_permissions(self.user, send_messages=False, read_messages=True)
+        loop = asyncio.get_running_loop()
+        loop.call_later(1200, self._schedule_archive_channel)
+
+    def _schedule_archive_channel(self):
+        loop = asyncio.get_running_loop()
+        loop.create_task(self._move_to_archives())
+
+    async def _move_to_archives(self):
+        category = await self.get_support_archive_category()
+        await self.channel.edit(reason='Archiving support channel', category=category)
+
+    async def unarchive(self):
+        category = await self.get_support_category()
+        await self.channel.edit(reason='Opening support channel', category=category)
+        await self.channel.set_permissions(self.user, send_messages=True, read_messages=True)
 
     @property
     def id(self):
         return self.channel.id
+
+    @property
+    def user_id(self):
+        return self.user.id
 
     @staticmethod
     async def build_support_session_channels_table(conn):
