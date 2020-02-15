@@ -126,9 +126,17 @@ class SupportChannel:
         return await self.channel.send(*args, **kwargs)
 
     async def archive(self):
+        await self.channel.set_permissions(self.user, send_messages=False, read_messages=True)
+        loop = asyncio.get_running_loop()
+        loop.call_later(1200, self._schedule_archive_channel)
+
+    def _schedule_archive_channel(self):
+        loop = asyncio.get_running_loop()
+        loop.create_task(self._move_to_archives())
+
+    async def _move_to_archives(self):
         category = await self.get_support_archive_category()
         await self.channel.edit(reason='Archiving support channel', category=category)
-        await self.channel.set_permissions(self.user, send_messages=False, read_messages=True)
 
     async def unarchive(self):
         category = await self.get_support_category()
