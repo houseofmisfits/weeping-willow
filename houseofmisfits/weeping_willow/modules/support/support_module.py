@@ -57,7 +57,7 @@ class SupportModule(Module):
                 session = await SupportSession.in_channel(channel)
                 await session.close()
                 return True
-            elif self.is_support(message.author):
+            elif await self.is_support(message.author):
                 session = await SupportSession.in_channel(channel)
                 await session.close()
                 return True
@@ -85,8 +85,8 @@ class SupportModule(Module):
         await msg.delete()
         return str(reaction.emoji) == '✅'
 
-    def is_support(self, user):
-        support_role = self.client.get_config('support_role_id')
+    async def is_support(self, user):
+        support_role = await self.client.get_config('support_role_id')
         for role in user.roles:
             if str(role.id) == support_role:
                 return True
