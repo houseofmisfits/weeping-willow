@@ -22,6 +22,7 @@ class BotAdministrationModule(Module):
         yield Command(self.client, 'wrestart', self.restart).get_trigger()
         yield Command(self.client, 'setconfig', self.set_config).get_trigger()
         yield Command(self.client, 'getconfig', self.get_config).get_trigger()
+        yield Command(self.client, 'clearconfig', self.clear_config).get_trigger()
 
     async def test_authorization(self, message):
         admin_users = await self.client.get_admin_users()
@@ -48,7 +49,7 @@ class BotAdministrationModule(Module):
 
     async def set_config(self, message: discord.message):
         if not await self.test_authorization(message):
-            return False
+            return True
         args = message.content.split(' ')
         args = [arg for arg in args if arg]
         if len(args) != 3:
@@ -58,6 +59,7 @@ class BotAdministrationModule(Module):
                     color=discord.Color.red()
                 )
             )
+            return True
         config_key = args[1]
         value = args[2]
         try:
@@ -103,4 +105,28 @@ class BotAdministrationModule(Module):
             )
         return True
 
+    async def clear_config(self, message: discord.message):
+        if not await self.test_authorization(message):
+            return False
+        args = message.content.split(' ')
+        args = [arg for arg in args if arg]
+        if len(args) != 2:
+            await message.channel.send(
+                embed=discord.Embed(
+                    description="Syntax is incorrect. Should be `{} config_name`.".format(args[0]),
+                    color=discord.Color.red()
+                )
+            )
+        config_key = args[1]
+        try:
+            await self.client.set_config(config_key, None)
+        except asyncpg.SyntaxOrAccessError as e:
+            await message.channel.send(
+                embed=discord.Embed(
+                    description="Something went wrong 😢".format(args[0]),
+                    color=discord.Color.red()
+                )
+            )
+        await message.add_reaction('✅')
+        return True
 
