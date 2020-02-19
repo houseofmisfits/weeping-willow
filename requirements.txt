@@ -2,3 +2,4 @@ discord
 pyyaml
 asyncpg
 pynacl
+pytz

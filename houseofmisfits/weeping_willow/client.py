@@ -41,7 +41,7 @@ class WeepingWillowClient(discord.Client):
         logger.warning("Bot is shutting down")
         await self.change_presence(status=discord.Status.invisible)
         await self.data_connection.close()
-        await WeepingWillowClient.close(self)
+        await super(WeepingWillowClient, self).close()
 
     async def on_ready(self):
         """
@@ -112,6 +112,3 @@ class WeepingWillowClient(discord.Client):
             if role.id in [tech_role, admin_role]:
                 admin_users += role.members
         return admin_users
-
-    def acquire_data_connection(self):
-        return self.data_connection.pool.acquire()

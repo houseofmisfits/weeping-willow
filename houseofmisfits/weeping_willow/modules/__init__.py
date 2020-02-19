@@ -1,4 +1,4 @@
-__module_list__ = ['BotAdministrationModule', 'VentingModule', 'DMHandlerModule', 'MeditationModule', 'SupportModule']
+__module_list__ = ['BotAdministrationModule', 'VentingModule', 'DMHandlerModule', 'MeditationModule', 'EventModule']
 
 __all__ = ['Module'] + __module_list__
 
@@ -7,4 +7,4 @@ from .venting import VentingModule
 from .dm_handler import DMHandlerModule
 from .bot_administration import BotAdministrationModule
 from .meditation import MeditationModule
-from .support import SupportModule
+from .event_module import EventModule
