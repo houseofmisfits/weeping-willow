@@ -1,11 +1,14 @@
 import asyncio
 import os
+import pytz
 from typing import AsyncIterable
+
+import discord
 
 from houseofmisfits.weeping_willow.modules import Module
 from houseofmisfits.weeping_willow.triggers import Trigger, ChannelTrigger
 
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta, timezone
 import logging
 
 logging.basicConfig()
@@ -65,6 +68,8 @@ class EventModule(Module):
     async def process_participant(self, message):
         if str(message.channel.id) != self.trigger.trigger_value:
             return False
+        if EventModule.get_est_time(message) < time(6) or EventModule.get_est_time(message) > time(18):
+            return False
         await self.add_participant_role(message.author)
         return True
 
@@ -85,3 +90,12 @@ class EventModule(Module):
                 self.client.add_trigger(self.trigger)
                 self.schedule_next_day()
             await asyncio.sleep(10)
+
+    @staticmethod
+    def get_est_time(message: discord.Message) -> time:
+        utc = pytz.utc
+        est = pytz.timezone('America/New_York')
+        ts = utc.localize(message.created_at)
+        return ts.astimezone(est).time()
+
+
