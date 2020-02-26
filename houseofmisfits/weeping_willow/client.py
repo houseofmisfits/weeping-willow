@@ -65,12 +65,12 @@ class WeepingWillowClient(discord.Client):
     async def add_module(self, module):
         self.modules.append(module)
         async for trigger in module.get_triggers():
-            if trigger is not None:
-                self.add_trigger(trigger)
+            self.add_trigger(trigger)
 
     def add_trigger(self, trigger: Trigger):
         logger.debug("Adding trigger {}".format(str(trigger)))
-        self.triggers.append(trigger)
+        if trigger is not None:
+            self.triggers.append(trigger)
 
     async def on_message(self, message: discord.Message):
         """
