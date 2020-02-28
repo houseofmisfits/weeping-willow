@@ -5,13 +5,12 @@ import discord
 
 from houseofmisfits.weeping_willow.modules import Module
 from houseofmisfits.weeping_willow.triggers import Trigger, Command
+from houseofmisfits.weeping_willow import LoggingEngine
 
 import os
 import logging
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class BotAdministrationModule(Module):
@@ -23,6 +22,7 @@ class BotAdministrationModule(Module):
         yield Command(self.client, 'setconfig', self.set_config).get_trigger()
         yield Command(self.client, 'getconfig', self.get_config).get_trigger()
         yield Command(self.client, 'clearconfig', self.clear_config).get_trigger()
+        yield Command(self.client, 'loglevel', self.set_log_level).get_trigger()
 
     async def test_authorization(self, message):
         admin_users = await self.client.get_admin_users()
@@ -38,7 +38,7 @@ class BotAdministrationModule(Module):
 
     async def restart(self, message: discord.Message):
         if not await self.test_authorization(message):
-            return False
+            return True
         await message.channel.send('Rebooting server')
         await self.client.change_presence(status=discord.Status.invisible)
         result = os.system("reboot")
@@ -76,7 +76,7 @@ class BotAdministrationModule(Module):
 
     async def get_config(self, message: discord.message):
         if not await self.test_authorization(message):
-            return False
+            return True
         args = message.content.split(' ')
         args = [arg for arg in args if arg]
         if len(args) != 2:
@@ -107,7 +107,7 @@ class BotAdministrationModule(Module):
 
     async def clear_config(self, message: discord.message):
         if not await self.test_authorization(message):
-            return False
+            return True
         args = message.content.split(' ')
         args = [arg for arg in args if arg]
         if len(args) != 2:
@@ -127,6 +127,31 @@ class BotAdministrationModule(Module):
                     color=discord.Color.red()
                 )
             )
+        await message.add_reaction('✅')
+        return True
+
+    async def set_log_level(self, message: discord.Message):
+        if not await self.test_authorization(message):
+            return True
+        args = [arg for arg in message.content.split(' ') if arg]
+        if len(args) != 2 or args[1].upper() not in LoggingEngine.LOG_LEVELS:
+            await message.channel.send(
+                embed=discord.Embed(
+                    description="Syntax is incorrect. Should be `{} debug|info|warn|error|critical`.".format(args[0]),
+                    color=discord.Color.red()
+                )
+            )
+        try:
+            await self.client.set_config('log_level', args[1].upper())
+            self.client.logging_engine.setLevel(LoggingEngine.LOG_LEVELS[args[1].upper()])
+        except Exception as e:
+            await message.channel.send(
+                embed=discord.Embed(
+                    description="Something went wrong 😢".format(args[0]),
+                    color=discord.Color.red()
+                )
+            )
+            raise e
         await message.add_reaction('✅')
         return True
 

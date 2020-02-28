@@ -11,6 +11,13 @@ COLORS = {
 
 
 class LoggingEngine(logging.StreamHandler):
+    LOG_LEVELS = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARN': logging.WARNING,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL
+    }
 
     def __init__(self, client):
         logging.StreamHandler.__init__(self)
@@ -21,6 +28,8 @@ class LoggingEngine(logging.StreamHandler):
     async def setup(self):
         self.channel = int(await self.client.get_config('logging_channel'))
         if self.channel is not None:
+            level_name = (await self.client.get_config('log_level', 'INFO')).upper()
+            self.setLevel(LoggingEngine.LOG_LEVELS[level_name])
             self.open = True
 
     def close(self):

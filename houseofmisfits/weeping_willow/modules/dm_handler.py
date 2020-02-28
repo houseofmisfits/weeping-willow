@@ -10,7 +10,6 @@ from houseofmisfits.weeping_willow.triggers.dm_trigger import DMTrigger
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class DMHandlerModule(Module):
@@ -37,7 +36,7 @@ class DMHandlerModule(Module):
                 dm_channel = await user.create_dm()
             dm_channels.append(dm_channel)
         self.dm_channels = dm_channels
-        logger.debug(str(len(self.dm_channels)) + " users will be notified if the bot is DMed.")
+        logger.info(str(len(self.dm_channels)) + " users will be notified if the bot is DMed.")
 
     async def handle_dm(self, message) -> bool:
         loop = asyncio.get_running_loop()

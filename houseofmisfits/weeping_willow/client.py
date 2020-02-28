@@ -21,6 +21,7 @@ class WeepingWillowClient(discord.Client):
         self.data_connection = WeepingWillowDataConnection(self)
         self.get_config = self.data_connection.get_config
         self.set_config = self.data_connection.set_config
+        self.logging_engine = LoggingEngine(self)
         self.modules = []
         self.triggers: List[Trigger] = []
 
@@ -52,10 +53,9 @@ class WeepingWillowClient(discord.Client):
         """
         When we are connected to Discord, let's go ahead and start logging to the logging channel.
         """
+        await self.logging_engine.setup()
         hom_logger = logging.getLogger('houseofmisfits')
-        engine = LoggingEngine(self)
-        await engine.setup()
-        hom_logger.addHandler(engine)
+        hom_logger.addHandler(self.logging_engine)
 
     async def set_up_modules(self):
         """
