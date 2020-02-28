@@ -1,6 +1,6 @@
 from typing import List, ClassVar
 from houseofmisfits.weeping_willow.triggers import Trigger
-from houseofmisfits.weeping_willow import WeepingWillowDataConnection
+from houseofmisfits.weeping_willow import WeepingWillowDataConnection, LoggingEngine
 
 import discord
 import os
@@ -9,9 +9,7 @@ import logging
 
 from houseofmisfits.weeping_willow import modules
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class WeepingWillowClient(discord.Client):
@@ -47,7 +45,17 @@ class WeepingWillowClient(discord.Client):
         """
         Runs when the bot is connected to Discord and ready to do stuff
         """
+        await self.set_up_logging()
         await self.set_up_modules()
+
+    async def set_up_logging(self):
+        """
+        When we are connected to Discord, let's go ahead and start logging to the logging channel.
+        """
+        hom_logger = logging.getLogger('houseofmisfits')
+        engine = LoggingEngine(self)
+        await engine.setup()
+        hom_logger.addHandler(engine)
 
     async def set_up_modules(self):
         """
