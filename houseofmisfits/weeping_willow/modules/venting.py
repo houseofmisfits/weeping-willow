@@ -11,9 +11,7 @@ from discord import TextChannel
 from houseofmisfits.weeping_willow.modules import Module
 from houseofmisfits.weeping_willow.triggers import ChannelTrigger
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class VentingModule(Module):
