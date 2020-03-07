@@ -58,26 +58,69 @@ class EventModule(Module):
                 )
             )
         elif args[1] == 'set':
-            await self.set_command(args)
+            await self.set_command(args, message)
         elif args[1] == 'clear':
-            await self.clear_command(args)
+            await self.clear_command(args, message)
         elif args[1] == 'role':
-            await self.role_command(args)
+            await self.role_command(args, message)
         elif args[1] == 'getparticipants':
-            await self.get_participants_command(args)
+            await self.get_participants_command(args, message)
         elif args[1] == 'resetparticipants':
-            await self.reset_participants_command(args)
+            await self.reset_participants_command(args, message)
         else:
-            await message.channel.send(
-                embed=discord.Embed(
-                    description="Unknown subcommand, `{}`. Try running `.events` to see subcommands.",
-                    color=discord.Color.red()
-                )
+            await self.send_error(
+                message.channel,
+                "Unknown subcommand, `{}`. Try running `.events` to see subcommands.".format(args[1])
             )
         return True
 
-    async def set_command(self, args):
-        pass
+    async def set_command(self, args, message):
+        if len(args) < 4:
+            await self.send_error(
+                message.channel,
+                "Improper syntax. "
+                "Syntax should be `{} {} {{day_of_week}} {{channel}}`".format(*args[0:2])
+            )
+        try:
+            day_of_week = self.get_day_of_week(args[2])
+        except ValueError:
+            await self.send_error(
+                message.channel,
+                "Couldn't understand {} as day of week".format(args[2])
+            )
+            return
+        try:
+            channel_id = self.get_channel_id(args[3])
+        except ValueError:
+            await self.send_error(
+                message.channel,
+                "Couldn't understand {} as a channel. Try copying the channel ID.".format(args[3])
+            )
+            return
+        if date.today().weekday() == day_of_week and \
+                not await self.confirm_change_today(message.channel, message.author):
+            return
+        await self.set_event(day_of_week, channel_id)
+        await message.add_reaction('✅')
+
+    async def confirm_change_today(self, channel, user):
+        msg = await channel.send("You're changing today's event. That can have unexpected consequences. "
+                                 "Do you want to continue?")
+        await msg.add_reaction('✅')
+        await msg.add_reaction('❌')
+        try:
+            reaction, user = await self.client.wait_for(
+                'reaction_add',
+                timeout=30,
+                check=lambda r, u: r.message.id == msg.id and u.id == user.id
+            )
+        except asyncio.TimeoutError:
+            await msg.delete()
+            return False
+        await msg.delete()
+        return str(reaction.emoji) == '✅'
+
+
 
     async def clear_command(self, args):
         pass
@@ -102,6 +145,19 @@ class EventModule(Module):
             )
             return False
         return True
+
+    def get_channel_id(self, channel_str):
+        if channel_str.startswith('<#'):
+            channel_str = channel_str[2:-1]
+        if channel_str.isnumeric():
+            for channel in self.client.get_all_channels():
+                if int(channel_str) == channel.id:
+                    return channel.id
+            raise ValueError()
+        for channel in self.client.get_all_channels():
+            if channel_str == channel.name:
+                return channel.id
+        raise ValueError()
 
     async def reset_trigger(self):
         if self.trigger is not None:
@@ -165,5 +221,32 @@ class EventModule(Module):
         est = pytz.timezone('America/New_York')
         ts = utc.localize(message.created_at)
         return ts.astimezone(est).time()
+
+    @staticmethod
+    async def send_error(channel, message):
+        await channel.send(
+            embed=discord.Embed(
+                description=message,
+                color=discord.Color.red()
+            )
+        )
+
+    @staticmethod
+    def get_day_of_week(day):
+        days = {
+            'su': 6, 'sun': 6, 'sunday': 6, 'sund': 6, 'sundae': 6, 'thelordsday': 6,
+            'm': 0, 'mo': 0, 'mon': 0, 'monday': 0, 'garfield': 0,
+            'tu': 1, 'tue': 1, 'tuesday': 1, 'twosday': 1,
+            'w': 2, 'we': 2, 'wed': 2, 'wednesday': 2, 'wendys': 2, 'humpday': 2, 'wensday': 2,
+            'th': 3, 'thu': 3, 'thur': 3, 'thurs': 3, 'thursday': 3,
+            'f': 4, 'fr': 4, 'fri': 4, 'friday': 4,
+            'sa': 5, 'sat': 5, 'saturday': 5
+        }
+        if day.isnumeric() and int(day) in range(7):
+            return int(day)
+        elif day.lower() in days.keys():
+            return days[day.lower()]
+        else:
+            raise ValueError()
 
 

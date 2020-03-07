@@ -82,9 +82,9 @@ async def make_module_commands(client):
             );
         """)
 
-        config_keys = ['participant_channel_sun', 'participant_channel_mon', 'participant_channel_tue',
+        config_keys = ['participant_channel_mon', 'participant_channel_tue',
                        'participant_channel_wed', 'participant_channel_thu', 'participant_channel_fri',
-                       'participant_channel_sat']
+                       'participant_channel_sat', 'participant_channel_sun']
 
         for i in range(7):
             config_key = config_keys[i]
