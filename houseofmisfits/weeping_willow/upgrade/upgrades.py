@@ -29,7 +29,7 @@ async def upgrade_database_async(client):
 async def _get_current_version(client):
     conn = await client.data_connection.pool.acquire()
     try:
-        result = await conn.fetch_row('SELECT version FROM _version')
+        result = await conn.fetchrow('SELECT version FROM _version')
         return result['version']
     except asyncpg.UndefinedTableError:
         return '0.0.0'
@@ -38,7 +38,7 @@ async def _get_current_version(client):
 
 
 async def _set_version(client, version):
-    async with client.data_connection.pool.acquire as conn:
+    async with client.data_connection.pool.acquire() as conn:
         await conn.execute('UPDATE _version SET version = $1', version)
 
 
@@ -50,7 +50,7 @@ def upgrade(from_version, to_version):
 
 
 @upgrade(from_version='0.0.0', to_version='0.0.1')
-def initialize_database(client):
+async def initialize_database(client):
     logger.info("Creating _version table")
     async with client.data_connection.pool.acquire() as conn, conn.transaction():
         await conn.execute("""
@@ -63,7 +63,7 @@ def initialize_database(client):
 
 
 @upgrade(from_version='0.0.1', to_version='0.0.2-dev')
-def make_module_commands(client):
+async def make_module_commands(client):
     async with client.data_connection.pool.acquire() as conn, conn.transaction():
         logger.info("Moving event config keys to event tables")
         result = await conn.fetch("""
@@ -77,7 +77,7 @@ def make_module_commands(client):
         await conn.execute("""
             CREATE TABLE event_channels (
                 day_of_week int2 NOT NULL,
-                channel_id int,
+                channel_id bigint,
                 CONSTRAINT day_of_week_pkey PRIMARY KEY (day_of_week)
             );
         """)
@@ -88,7 +88,7 @@ def make_module_commands(client):
 
         for i in range(7):
             config_key = config_keys[i]
-            channel_id = event_days[config_key] if config_key in event_days else None
+            channel_id = int(event_days[config_key]) if config_key in event_days else None
             await conn.execute("""
                 INSERT INTO event_channels
                 VALUES ($1, $2) ;
