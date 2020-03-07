@@ -103,6 +103,9 @@ class EventModule(Module):
         await self.set_event(day_of_week, channel_id)
         await message.add_reaction('✅')
 
+    async def clear_command(self, args):
+        pass
+
     async def confirm_change_today(self, channel, user):
         msg = await channel.send("You're changing today's event. That can have unexpected consequences. "
                                  "Do you want to continue?")
@@ -120,10 +123,11 @@ class EventModule(Module):
         await msg.delete()
         return str(reaction.emoji) == '✅'
 
-
-
-    async def clear_command(self, args):
-        pass
+    async def set_event(self, day_of_week, channel_id):
+        with self.client.data_connection.pool.acquire() as conn:
+            conn.execute("UPDATE event_channels SET channel_id = $2 WHERE day_of_week = $1", day_of_week, channel_id)
+        if date.today().weekday() == day_of_week:
+            await self.reset_trigger()
 
     async def role_command(self, args):
         pass
