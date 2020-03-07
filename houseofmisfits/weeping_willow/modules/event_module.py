@@ -6,9 +6,9 @@ from typing import AsyncIterable
 import discord
 
 from houseofmisfits.weeping_willow.modules import Module
-from houseofmisfits.weeping_willow.triggers import Trigger, ChannelTrigger
+from houseofmisfits.weeping_willow.triggers import Trigger, ChannelTrigger, Command
 
-from datetime import date, time, datetime, timedelta, timezone
+from datetime import date, time, datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,11 +31,77 @@ class EventModule(Module):
         self.trigger = None
         self.reset_ts = None
         self.is_open = True
+        self.command = Command(self.client, 'events', self.events_command)
 
     async def get_triggers(self) -> AsyncIterable[Trigger]:
         await self.reset_trigger()
         yield self.trigger
+        yield self.command.get_trigger()
         asyncio.get_running_loop().create_task(self.loop_daily())
+
+    async def events_command(self, message):
+        if not await self.test_authorization(message):
+            return True
+        args = message.content.split(' ')
+        args = [arg for arg in args if arg]
+        if len(args) == 1:
+            await message.channel.send(
+                embed=discord.Embed(
+                    color=discord.Color.greyple(),
+                    description="""Subcommands:
+`set {day} {channel}` - Sets the event channel for `day` to `channel` 
+`clear {day}` - Removes the event for `day`
+`role {role ID}` - Sets the role given to event participants to `role ID`
+`getparticipants {day}` - Sets the participant role to people who participated on `day`
+`resetparticipants` - Resets the participant role to people who participated today
+"""
+                )
+            )
+        elif args[1] == 'set':
+            await self.set_command(args)
+        elif args[1] == 'clear':
+            await self.clear_command(args)
+        elif args[1] == 'role':
+            await self.role_command(args)
+        elif args[1] == 'getparticipants':
+            await self.get_participants_command(args)
+        elif args[1] == 'resetparticipants':
+            await self.reset_participants_command(args)
+        else:
+            await message.channel.send(
+                embed=discord.Embed(
+                    description="Unknown subcommand, `{}`. Try running `.events` to see subcommands.",
+                    color=discord.Color.red()
+                )
+            )
+        return True
+
+    async def set_command(self, args):
+        pass
+
+    async def clear_command(self, args):
+        pass
+
+    async def role_command(self, args):
+        pass
+
+    async def get_participants_command(self, args):
+        pass
+
+    async def reset_participants_command(self, args):
+        pass
+
+    async def test_authorization(self, message):
+        admin_users = await self.client.get_admin_users()
+        if message.author not in admin_users:
+            await message.channel.send(
+                embed=discord.Embed(
+                    description="You're not authorized to use that command",
+                    color=discord.Color.red()
+                )
+            )
+            return False
+        return True
 
     async def reset_trigger(self):
         if self.trigger is not None:

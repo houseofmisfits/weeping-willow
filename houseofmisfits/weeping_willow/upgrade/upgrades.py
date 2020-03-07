@@ -50,7 +50,7 @@ def upgrade(from_version, to_version):
 
 
 @upgrade(from_version='0.0.0', to_version='0.0.1')
-def initialize_database(client):
+async def initialize_database(client):
     logger.info("Creating _version table")
     async with client.data_connection.pool.acquire() as conn, conn.transaction():
         await conn.execute("""
@@ -63,7 +63,7 @@ def initialize_database(client):
 
 
 @upgrade(from_version='0.0.1', to_version='0.0.2-dev')
-def make_module_commands(client):
+async def make_module_commands(client):
     async with client.data_connection.pool.acquire() as conn, conn.transaction():
         logger.info("Moving event config keys to event tables")
         result = await conn.fetch("""
