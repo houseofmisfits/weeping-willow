@@ -1,6 +1,6 @@
 from typing import List, ClassVar
 from houseofmisfits.weeping_willow.triggers import Trigger
-from houseofmisfits.weeping_willow import WeepingWillowDataConnection, LoggingEngine
+from houseofmisfits.weeping_willow import WeepingWillowDataConnection, LoggingEngine, upgrades
 
 import discord
 import os
@@ -34,6 +34,7 @@ class WeepingWillowClient(discord.Client):
         ))
         self.data_connection.connect()
         logger.info("Successfully connected to internal database")
+        upgrades.upgrade_database(self)
         super(WeepingWillowClient, self).run(os.getenv('BOT_CLIENT_TOKEN'), *args, **kwargs)
 
     async def close(self):
