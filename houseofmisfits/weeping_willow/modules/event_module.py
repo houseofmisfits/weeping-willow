@@ -124,8 +124,8 @@ class EventModule(Module):
         return str(reaction.emoji) == '✅'
 
     async def set_event(self, day_of_week, channel_id):
-        with self.client.data_connection.pool.acquire() as conn:
-            conn.execute("UPDATE event_channels SET channel_id = $2 WHERE day_of_week = $1", day_of_week, channel_id)
+        async with self.client.data_connection.pool.acquire() as conn:
+            await conn.execute("UPDATE event_channels SET channel_id = $2 WHERE day_of_week = $1", day_of_week, channel_id)
         if date.today().weekday() == day_of_week:
             await self.reset_trigger()
 
