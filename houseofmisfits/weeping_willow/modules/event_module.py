@@ -103,8 +103,26 @@ class EventModule(Module):
         await self.set_event(day_of_week, channel_id)
         await message.add_reaction('✅')
 
-    async def clear_command(self, args):
-        pass
+    async def clear_command(self, args, message):
+        if len(args) < 3:
+            await self.send_error(
+                message.channel,
+                "Improper syntax. "
+                "Syntax should be `{} {} {{day_of_week}}`".format(*args[0:2])
+            )
+        try:
+            day_of_week = self.get_day_of_week(args[2])
+        except ValueError:
+            await self.send_error(
+                message.channel,
+                "Couldn't understand {} as day of week".format(args[2])
+            )
+            return
+        if date.today().weekday() == day_of_week and \
+                not await self.confirm_change_today(message.channel, message.author):
+            return
+        await self.set_event(day_of_week, None)
+        await message.add_reaction('✅')
 
     async def confirm_change_today(self, channel, user):
         msg = await channel.send("You're changing today's event. That can have unexpected consequences. "
@@ -125,7 +143,10 @@ class EventModule(Module):
 
     async def set_event(self, day_of_week, channel_id):
         async with self.client.data_connection.pool.acquire() as conn:
-            await conn.execute("UPDATE event_channels SET channel_id = $2 WHERE day_of_week = $1", day_of_week, channel_id)
+            await conn.execute(
+                "UPDATE event_channels SET channel_id = $2 WHERE day_of_week = $1",
+                day_of_week, channel_id
+            )
         if date.today().weekday() == day_of_week:
             await self.reset_trigger()
 
