@@ -27,7 +27,8 @@ weekdays = {
 
 class EventModule(Module):
     def __init__(self, client):
-        self.client = client
+        from houseofmisfits.weeping_willow import WeepingWillowClient
+        self.client: WeepingWillowClient = client
         self.trigger = None
         self.reset_ts = None
         self.is_open = True
@@ -86,7 +87,7 @@ class EventModule(Module):
         except ValueError:
             await self.send_error(
                 message.channel,
-                "Couldn't understand {} as day of week".format(args[2])
+                "Couldn't understand `{}` as day of week".format(args[2])
             )
             return
         try:
@@ -94,7 +95,7 @@ class EventModule(Module):
         except ValueError:
             await self.send_error(
                 message.channel,
-                "Couldn't understand {} as a channel. Try copying the channel ID.".format(args[3])
+                "Couldn't understand `{}` as a channel. Try copying the channel ID.".format(args[3])
             )
             return
         if date.today().weekday() == day_of_week and \
@@ -115,7 +116,7 @@ class EventModule(Module):
         except ValueError:
             await self.send_error(
                 message.channel,
-                "Couldn't understand {} as day of week".format(args[2])
+                "Couldn't understand `{}` as day of week".format(args[2])
             )
             return
         if date.today().weekday() == day_of_week and \
@@ -150,13 +151,30 @@ class EventModule(Module):
         if date.today().weekday() == day_of_week:
             await self.reset_trigger()
 
-    async def role_command(self, args):
+    async def role_command(self, args, message):
+        if len(args) < 3:
+            await self.send_error(
+                message.channel,
+                "Improper syntax. "
+                "Syntax should be `{} {} {{role}}`".format(*args[0:2])
+            )
+            return
+        try:
+            role = self.get_role_id(args[2])
+            await self.client.set_config('participant_role', str(role))
+            await message.add_reaction('✅')
+        except ValueError:
+            await self.send_error(
+                message.channel,
+                "Couldn't understand `{}` as a role".format(
+                    args[2]
+                )
+            )
+
+    async def get_participants_command(self, args, message):
         pass
 
-    async def get_participants_command(self, args):
-        pass
-
-    async def reset_participants_command(self, args):
+    async def reset_participants_command(self, args, message):
         pass
 
     async def test_authorization(self, message):
@@ -180,8 +198,21 @@ class EventModule(Module):
                     return channel.id
             raise ValueError()
         for channel in self.client.get_all_channels():
-            if channel_str == channel.name:
+            if channel_str.lower() == channel.name.lower():
                 return channel.id
+        raise ValueError()
+
+    def get_role_id(self, role_str):
+        if role_str.startswith('<@&'):
+            role_str = role_str[3:-1]
+        if role_str.isnumeric():
+            role = self.client.guild.get_role(int(role_str))
+            if role is None:
+                raise ValueError()
+            return role.id
+        for role in self.client.guild.roles:
+            if role.name.lower() == role_str.lower():
+                return role.id
         raise ValueError()
 
     async def reset_trigger(self):
@@ -273,5 +304,3 @@ class EventModule(Module):
             return days[day.lower()]
         else:
             raise ValueError()
-
-

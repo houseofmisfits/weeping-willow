@@ -1,4 +1,4 @@
-from typing import List, ClassVar
+from typing import List, ClassVar, Union
 from houseofmisfits.weeping_willow.triggers import Trigger
 from houseofmisfits.weeping_willow import WeepingWillowDataConnection, LoggingEngine, upgrades
 
@@ -22,6 +22,7 @@ class WeepingWillowClient(discord.Client):
         self.get_config = self.data_connection.get_config
         self.set_config = self.data_connection.set_config
         self.logging_engine = LoggingEngine(self)
+        self.guild: Union[discord.Guild, None] = None
         self.modules = []
         self.triggers: List[Trigger] = []
 
@@ -47,6 +48,7 @@ class WeepingWillowClient(discord.Client):
         """
         Runs when the bot is connected to Discord and ready to do stuff
         """
+        self.guild = self.get_guild(int(os.getenv('BOT_GUILD_ID')))
         await self.set_up_logging()
         await self.set_up_modules()
 
