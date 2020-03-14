@@ -39,6 +39,7 @@ class EventModule(Module):
         yield self.trigger
         yield self.command.get_trigger()
         asyncio.get_running_loop().create_task(self.loop_daily())
+        asyncio.get_running_loop().create_task(self.scan_for_messages)
 
     async def events_command(self, message):
         if not await self.test_authorization(message):
@@ -150,6 +151,7 @@ class EventModule(Module):
             )
         if date.today().weekday() == day_of_week:
             await self.reset_trigger()
+            self.client.add_trigger(self.trigger)
 
     async def role_command(self, args, message):
         if len(args) < 3:
@@ -224,13 +226,14 @@ class EventModule(Module):
         self.schedule_next_day()
 
     async def create_trigger(self):
-        day_of_week = weekdays[date.today().weekday()]
-        participant_channel = await self.client.get_config('participant_channel_{}'.format(day_of_week))
+        async with self.client.data_connection.pool.acquire() as conn:
+            participant_channel = await conn.fetchrow(
+                "SELECT channel_id FROM event_channels WHERE day_of_week = $1", date.today().weekday())
         if participant_channel is None:
-            logger.info("No event set for participant_channel_{}, not adding a trigger.".format(day_of_week))
+            logger.info("No event set for today, not adding a trigger.")
             return None
-        logger.info("Setting event channel to channel {}".format(participant_channel))
-        return ChannelTrigger(participant_channel, self.process_participant)
+        logger.info("Setting event channel to channel {}".format(participant_channel['channel_id']))
+        return ChannelTrigger(str(participant_channel['channel_id']), self.process_participant)
 
     async def clear_participant_role(self):
         logger.info("Clearing participant role")
@@ -249,18 +252,30 @@ class EventModule(Module):
             return False
         if EventModule.get_est_time(message) < time(6) or EventModule.get_est_time(message) > time(18):
             return False
+        self.client.loop.create_task(self.update_participant_database(message))
         await self.add_participant_role(message.author)
         return True
+
+    async def update_participant_database(self, message):
+        async with self.client.data_connection.pool.acquire() as conn:
+            result = await conn.fetchrow(
+                'SELECT message_id FROM event_participants WHERE participation_dt = $1 AND member_id = $2',
+                date.today(), message.author.id
+            )
+            if result is not None:
+                return
+            await conn.execute(
+                "INSERT INTO event_participants VALUES ($1, $2, $3);",
+                date.today(), message.author.id, message.id
+            )
 
     async def add_participant_role(self, user):
         await user.add_roles(await self.get_participant_role())
 
     async def get_participant_role(self):
-        guild_id = int(os.getenv('BOT_GUILD_ID'))
-        guild = self.client.get_guild(guild_id)
         role_id = await self.client.get_config('participant_role')
         logger.debug("Participant role ID: " + role_id)
-        return guild.get_role(int(role_id))
+        return self.client.guild.get_role(int(role_id))
 
     async def loop_daily(self):
         while self.is_open:

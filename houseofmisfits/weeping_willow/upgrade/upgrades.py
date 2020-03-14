@@ -46,6 +46,7 @@ def upgrade(from_version, to_version):
     def decorate(func):
         version_functions.append((from_version, to_version, func))
         return func
+
     return decorate
 
 
@@ -62,7 +63,7 @@ async def initialize_database(client):
         """)
 
 
-@upgrade(from_version='0.0.1', to_version='0.0.2-dev')
+@upgrade(from_version='0.0.1', to_version='0.0.2-dev-002')
 async def make_module_commands(client):
     async with client.data_connection.pool.acquire() as conn, conn.transaction():
         logger.info("Moving event config keys to event tables")
@@ -98,3 +99,18 @@ async def make_module_commands(client):
             DELETE FROM bot_config
             WHERE config_key LIKE 'participant_channel%' ;
         """)
+
+        await create_event_participants_table()
+
+
+@upgrade(from_version='0.0.2-dev', to_version='0.0.2-dev-002')
+async def create_event_participants_table(client):
+    async with client.data_connection.pool.acquire() as conn, conn.transaction():
+        await conn.execute("""
+                CREATE TABLE event_participants (
+                    participation_dt DATE NOT NULL,
+                    member_id bigint,
+                    message_id bigint,
+                    CONSTRAINT event_participation_pkey PRIMARY KEY (participation_dt, member_id)
+                );
+            """)
