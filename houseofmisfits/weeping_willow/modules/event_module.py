@@ -31,6 +31,7 @@ class EventModule(Module):
         self.client: WeepingWillowClient = client
         self.trigger = None
         self.reset_ts = None
+        self.scan_ts = datetime.now()
         self.is_open = True
         self.command = Command(self.client, 'events', self.events_command)
 
@@ -39,7 +40,7 @@ class EventModule(Module):
         yield self.trigger
         yield self.command.get_trigger()
         asyncio.get_running_loop().create_task(self.loop_daily())
-        asyncio.get_running_loop().create_task(self.scan_for_messages)
+        asyncio.get_running_loop().create_task(self.scan_for_messages())
 
     async def events_command(self, message):
         if not await self.test_authorization(message):
@@ -229,11 +230,13 @@ class EventModule(Module):
         async with self.client.data_connection.pool.acquire() as conn:
             participant_channel = await conn.fetchrow(
                 "SELECT channel_id FROM event_channels WHERE day_of_week = $1", date.today().weekday())
-        if participant_channel is None:
+        if participant_channel['channel_id'] is None:
             logger.info("No event set for today, not adding a trigger.")
             return None
         logger.info("Setting event channel to channel {}".format(participant_channel['channel_id']))
-        return ChannelTrigger(str(participant_channel['channel_id']), self.process_participant)
+        trigger = ChannelTrigger(str(participant_channel['channel_id']), self.process_participant)
+        self.client.add_trigger(trigger)
+        return trigger
 
     async def clear_participant_role(self):
         logger.info("Clearing participant role")
@@ -270,7 +273,8 @@ class EventModule(Module):
             )
 
     async def add_participant_role(self, user):
-        await user.add_roles(await self.get_participant_role())
+        member = await self.client.guild.get_member(user.id)
+        member.add_roles(await self.get_participant_role())
 
     async def get_participant_role(self):
         role_id = await self.client.get_config('participant_role')
@@ -285,6 +289,33 @@ class EventModule(Module):
                 self.client.add_trigger(self.trigger)
                 self.schedule_next_day()
             await asyncio.sleep(10)
+
+    async def scan_for_messages(self):
+        while self.is_open:
+            if datetime.now() > self.scan_ts and self.trigger:
+                logger.info("Scanning for missed event participants")
+                participant_users = await self.get_participants_for_day(date.today())
+                event_channel = await self.get_event_channel(date.today().weekday())
+                channel: discord.TextChannel = self.client.get_channel(event_channel)
+                async for message in channel.history(limit=200):
+                    if message.author.id not in participant_users:
+                        logger.debug("Found message {} for user not in participants list, adding participant".format(
+                            message.id
+                        ))
+                        await self.process_participant(message)
+                self.scan_ts = datetime.now() + timedelta(hours=2)
+            await asyncio.sleep(5)
+
+    async def get_participants_for_day(self, event_date):
+        async with self.client.data_connection.pool.acquire() as conn:
+            results = await conn.fetch(
+                "SELECT member_id FROM event_participants WHERE participation_dt = $1", event_date)
+            return [int(result['member_id']) for result in results] if results else []
+
+    async def get_event_channel(self, weekday):
+        async with self.client.data_connection.pool.acquire() as conn:
+            result = await conn.fetchrow('SELECT channel_id FROM event_channels WHERE day_of_week = $1', weekday)
+            return int(result['channel_id'])
 
     @staticmethod
     def get_est_time(message: discord.Message) -> time:
