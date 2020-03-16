@@ -1,5 +1,4 @@
 import asyncio
-import os
 import pytz
 from typing import AsyncIterable
 
@@ -34,6 +33,7 @@ class EventModule(Module):
         self.scan_ts = datetime.now()
         self.is_open = True
         self.command = Command(self.client, 'events', self.events_command)
+        self.backdated = False
 
     async def get_triggers(self) -> AsyncIterable[Trigger]:
         await self.reset_trigger()
@@ -224,6 +224,7 @@ class EventModule(Module):
             self.client.triggers.remove(self.trigger)
             self.trigger = None
         self.trigger = await self.create_trigger()
+        self.reset_participant_role()
         self.schedule_next_day()
 
     async def create_trigger(self):
@@ -245,7 +246,10 @@ class EventModule(Module):
             await user.remove_roles(participant_role)
 
     def schedule_next_day(self):
-        today = date.today() + timedelta(days=1)
+        if datetime.now().time() > time(2, 0, 0):
+            today = date.today() + timedelta(days=1)
+        else:
+            today = date.today()
         reset_time = time(2, 0, 0)  # 2:00 AM
         self.reset_ts = datetime.combine(today, reset_time)
         logger.info("Will reset event stuff at {}".format(self.reset_ts))
