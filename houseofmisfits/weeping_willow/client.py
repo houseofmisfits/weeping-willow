@@ -42,6 +42,7 @@ class WeepingWillowClient(discord.Client):
         logger.warning("Bot is shutting down")
         await self.change_presence(status=discord.Status.invisible)
         await self.data_connection.close()
+        self.logging_engine.close()
         await super(WeepingWillowClient, self).close()
 
     async def on_ready(self):
@@ -49,6 +50,7 @@ class WeepingWillowClient(discord.Client):
         Runs when the bot is connected to Discord and ready to do stuff
         """
         self.guild = self.get_guild(int(os.getenv('BOT_GUILD_ID')))
+        self.loop.set_exception_handler(self.handle_exception)
         await self.set_up_logging()
         await self.set_up_modules()
 
@@ -123,3 +125,7 @@ class WeepingWillowClient(discord.Client):
             if role.id in [tech_role, admin_role]:
                 admin_users += role.members
         return admin_users
+
+    @staticmethod
+    def handle_exception(loop, context):
+        logger.error("An unhandled exception occurred: " + context['message'], exc_info=context['exception'])

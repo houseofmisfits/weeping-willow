@@ -1,12 +1,14 @@
 import logging
+import os
+
 import discord
 
 COLORS = {
     10: discord.Color.greyple(),
     20: discord.Color.dark_green(),
-    30: discord.Color.orange(),
-    40: discord.Color.gold(),
-    50: discord.Color.red()
+    30: discord.Color.gold(),
+    40: discord.Color.red(),
+    50: discord.Color.magenta()
 }
 
 
@@ -50,4 +52,5 @@ class LoggingEngine(logging.StreamHandler):
         embed.description = message
         embed.set_footer(text=record.name)
         embed.colour = color
-        await channel.send(embed=embed)
+        plaintext = None if record.levelno < 40 else '<@&{}>'.format(os.getenv('BOT_TECH_ROLE'))
+        await channel.send(plaintext, embed=embed)
