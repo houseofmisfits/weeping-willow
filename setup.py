@@ -6,7 +6,7 @@ with open('requirements.txt') as f:
 setup(
     name='Weeping Willow',
     description='House of Misfits custom bot',
-    version='0.0.1',
+    version='0.0.2-dev',
     packages=['houseofmisfits.weeping_willow'],
     install_requires=requirements,
     license='Proprietary',
