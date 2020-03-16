@@ -1,6 +1,6 @@
-from typing import List, ClassVar
+from typing import List, ClassVar, Union
 from houseofmisfits.weeping_willow.triggers import Trigger
-from houseofmisfits.weeping_willow import WeepingWillowDataConnection, LoggingEngine
+from houseofmisfits.weeping_willow import WeepingWillowDataConnection, LoggingEngine, upgrades
 
 import discord
 import os
@@ -22,6 +22,7 @@ class WeepingWillowClient(discord.Client):
         self.get_config = self.data_connection.get_config
         self.set_config = self.data_connection.set_config
         self.logging_engine = LoggingEngine(self)
+        self.guild: Union[discord.Guild, None] = None
         self.modules = []
         self.triggers: List[Trigger] = []
 
@@ -34,18 +35,22 @@ class WeepingWillowClient(discord.Client):
         ))
         self.data_connection.connect()
         logger.info("Successfully connected to internal database")
+        upgrades.upgrade_database(self)
         super(WeepingWillowClient, self).run(os.getenv('BOT_CLIENT_TOKEN'), *args, **kwargs)
 
     async def close(self):
         logger.warning("Bot is shutting down")
         await self.change_presence(status=discord.Status.invisible)
         await self.data_connection.close()
+        self.logging_engine.close()
         await super(WeepingWillowClient, self).close()
 
     async def on_ready(self):
         """
         Runs when the bot is connected to Discord and ready to do stuff
         """
+        self.guild = self.get_guild(int(os.getenv('BOT_GUILD_ID')))
+        self.loop.set_exception_handler(self.handle_exception)
         await self.set_up_logging()
         await self.set_up_modules()
 
@@ -120,3 +125,7 @@ class WeepingWillowClient(discord.Client):
             if role.id in [tech_role, admin_role]:
                 admin_users += role.members
         return admin_users
+
+    @staticmethod
+    def handle_exception(loop, context):
+        logger.error("An unhandled exception occurred: " + context['message'], exc_info=context['exception'])
