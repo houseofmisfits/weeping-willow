@@ -12,7 +12,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 weekdays = {
     0: 'mon',
     1: 'tue',
@@ -175,10 +174,51 @@ class EventModule(Module):
             )
 
     async def get_participants_command(self, args, message):
-        pass
+        if len(args) < 3:
+            await self.send_error(
+                message.channel,
+                "Improper syntax. "
+                "Syntax should be `{} {} {{day/date}}`".format(*args[0:2])
+            )
+            return
+        try:
+            weekday = self.get_day_of_week(args[2])
+            test_date = date.today() - timedelta(days=1)
+            while test_date.weekday() != weekday:
+                test_date = test_date - timedelta(days=1)
+            event_date = test_date
+        except ValueError():
+            try:
+                event_date = date.fromisoformat(args[2])
+            except ValueError():
+                await self.send_error(
+                    message.channel,
+                    "Could not understand {} as date or day of week."
+                    "If using a date, please use the format `YYYY-MM-DD`.".format(args[2])
+                )
+                return
+        await self.set_participants_role_to_day(event_date)
+        await message.add_reaction('✅')
 
     async def reset_participants_command(self, args, message):
-        pass
+        await self.reset_participant_role()
+        await message.add_reaction('✅')
+
+    async def set_participants_role_to_day(self, event_date):
+        self.backdated = True
+        await self.clear_participant_role()
+        participants = await self.get_participants_for_day(event_date)
+        for user_id in participants:
+            participant = self.client.get_user(user_id)
+            await self.add_participant_role(participant)
+
+    async def reset_participant_role(self):
+        await self.clear_participant_role()
+        todays_participants = await self.get_participants_for_day(date.today())
+        for user_id in todays_participants:
+            participant = self.client.get_user(user_id)
+            await self.add_participant_role(participant)
+        self.backdated = False
 
     async def test_authorization(self, message):
         admin_users = await self.client.get_admin_users()
@@ -224,7 +264,7 @@ class EventModule(Module):
             self.client.triggers.remove(self.trigger)
             self.trigger = None
         self.trigger = await self.create_trigger()
-        self.reset_participant_role()
+        await self.reset_participant_role()
         self.schedule_next_day()
 
     async def create_trigger(self):
@@ -257,10 +297,11 @@ class EventModule(Module):
     async def process_participant(self, message):
         if str(message.channel.id) != self.trigger.trigger_value:
             return False
-        if EventModule.get_est_time(message) < time(6) or EventModule.get_est_time(message) > time(18):
+        if EventModule.get_est_time(message).time() < time(6) or EventModule.get_est_time(message).time() > time(18):
             return False
         self.client.loop.create_task(self.update_participant_database(message))
-        await self.add_participant_role(message.author)
+        if not self.backdated:
+            await self.add_participant_role(message.author)
         return True
 
     async def update_participant_database(self, message):
@@ -277,8 +318,10 @@ class EventModule(Module):
             )
 
     async def add_participant_role(self, user):
-        member = await self.client.guild.get_member(user.id)
-        member.add_roles(await self.get_participant_role())
+        member = self.client.guild.get_member(user.id)
+        if member is None:
+            return   # webhooks, users who left, etc.
+        await member.add_roles(await self.get_participant_role())
 
     async def get_participant_role(self):
         role_id = await self.client.get_config('participant_role')
@@ -302,6 +345,8 @@ class EventModule(Module):
                 event_channel = await self.get_event_channel(date.today().weekday())
                 channel: discord.TextChannel = self.client.get_channel(event_channel)
                 async for message in channel.history(limit=200):
+                    if EventModule.get_est_time(message).date() != date.today():
+                        continue
                     if message.author.id not in participant_users:
                         logger.debug("Found message {} for user not in participants list, adding participant".format(
                             message.id
@@ -322,11 +367,11 @@ class EventModule(Module):
             return int(result['channel_id'])
 
     @staticmethod
-    def get_est_time(message: discord.Message) -> time:
+    def get_est_time(message: discord.Message) -> datetime:
         utc = pytz.utc
         est = pytz.timezone('America/New_York')
         ts = utc.localize(message.created_at)
-        return ts.astimezone(est).time()
+        return ts.astimezone(est)
 
     @staticmethod
     async def send_error(channel, message):
