@@ -9,7 +9,6 @@ from houseofmisfits.weeping_willow.triggers import Trigger, Command
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 MEDITATION_SOURCE = 'http://www.freemindfulness.org/MARC5MinuteBreathing.mp3'
 
