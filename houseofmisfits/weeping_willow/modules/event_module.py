@@ -361,7 +361,7 @@ class EventModule(Module):
         async with self.client.data_connection.pool.acquire() as conn:
             results = await conn.fetch(
                 "SELECT member_id FROM event_participants WHERE participation_dt = $1", event_date)
-            return [int(result['member_id']) for result in results] if results else []
+            return [int(result['member_id']) for result in results] if results is not None else []
 
     async def get_event_channel(self, weekday):
         async with self.client.data_connection.pool.acquire() as conn:
