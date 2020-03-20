@@ -299,6 +299,8 @@ class EventModule(Module):
             return False
         if EventModule.get_est_time(message).time() < time(6) or EventModule.get_est_time(message).time() > time(18):
             return False
+        if message.author.bot:
+            return False
         self.client.loop.create_task(self.update_participant_database(message))
         if not self.backdated:
             await self.add_participant_role(message.author)
