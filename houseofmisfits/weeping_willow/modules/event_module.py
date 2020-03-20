@@ -187,10 +187,10 @@ class EventModule(Module):
             while test_date.weekday() != weekday:
                 test_date = test_date - timedelta(days=1)
             event_date = test_date
-        except ValueError():
+        except ValueError:
             try:
                 event_date = date.fromisoformat(args[2])
-            except ValueError():
+            except ValueError:
                 await self.send_error(
                     message.channel,
                     "Could not understand {} as date or day of week."
@@ -280,7 +280,7 @@ class EventModule(Module):
         return trigger
 
     async def clear_participant_role(self):
-        logger.info("Clearing participant role")
+        logger.debug("Clearing participant role")
         participant_role = await self.get_participant_role()
         for user in participant_role.members:
             await user.remove_roles(participant_role)
@@ -320,7 +320,9 @@ class EventModule(Module):
     async def add_participant_role(self, user):
         member = self.client.guild.get_member(user.id)
         if member is None:
-            return   # webhooks, users who left, etc.
+            logger.debug("User {} is not a valid member - skipping".format(user.id))
+            return
+        logger.debug("Giving user {} the participant role".format(member.id))
         await member.add_roles(await self.get_participant_role())
 
     async def get_participant_role(self):
