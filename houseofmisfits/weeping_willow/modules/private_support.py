@@ -4,6 +4,10 @@ from houseofmisfits.weeping_willow.modules import Module
 from houseofmisfits.weeping_willow.triggers import Trigger, Command
 
 import discord
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class PrivateSupport(Module):
@@ -35,11 +39,11 @@ class PrivateSupport(Module):
                 )
             )
         elif args[1] == 'open':
-            await self.open_session(args, message)
+            return await self.open_session(args, message)
         elif args[1] == 'close':
-            await self.close_session(args, message)
+            return await self.close_session(args, message)
         elif args[1] == 'clear':
-            await self.clear_channel(args, message)
+            return await self.clear_channel(args, message)
         else:
             await self.send_error(
                 message.channel,
@@ -47,8 +51,18 @@ class PrivateSupport(Module):
             )
         return True
 
-    async def test_authorization(self, message):
-        pass
+    async def test_authorization(self, message: discord.Message):
+        support_role = await self.client.get_config('support_role_id')
+        for role in message.author.roles:
+            if str(role.id) == support_role:
+                if not message.channel.name.startswith('private-support'):
+                    logger.info("`.private` issued in channel that is not `private-support` {}".format(
+                        message.jump_url)
+                    )
+                    return False
+                return True
+        logger.info("`.private` issued by non-support member. {}".format(message.jump_url))
+        return False
 
     async def open_session(self, args, message):
         pass
