@@ -78,6 +78,7 @@ class PrivateSupport(Module):
         try:
             user = self.get_user(args[2])
             support_role = await self.client.get_config('support_role_id')
+            await message.delete()
             await message.channel.set_permissions(user, send_messages=True, read_messages=True)
             await message.channel.send("Hi <@!{}>, I see you need support right now. Our <@&{}> "
                                        "team will try to get to you soon, but in the meantime please state as much "
@@ -97,7 +98,10 @@ class PrivateSupport(Module):
     def get_user(self, user_str):
         match = re.search("^(?:<@!?)?(\\d+)>?$", user_str)
         if match:
-            return self.client.get_user(int(match.group(1)))
+            user = self.client.get_user(int(match.group(1)))
+            if user is None:
+                raise ValueError()
+            return user
         guild_id = os.getenv('BOT_GUILD_ID')
         guild = self.client.get_guild(int(guild_id))
         for member in guild.members:
@@ -106,10 +110,23 @@ class PrivateSupport(Module):
         raise ValueError()
 
     async def close_session(self, args, message):
-        pass
+        await message.delete()
+        overwrites = message.channel.overwrites
+        for target in overwrites:
+            if isinstance(target, discord.Member):
+                await message.channel.set_permissions(target, send_messages=False, read_messages=True)
+        await message.channel.send(
+            "Our support session is coming to an end. I hope that it has helped you feel a little bit better. ❤ At "
+            "this time, take a breather, drink some water, and try to find a calm space, our support will do the same."
+        )
+        return True
 
     async def clear_channel(self, args, message):
-        pass
+        overwrites = message.channel.overwrites
+        for target in overwrites:
+            if isinstance(target, discord.Member):
+                await message.channel.set_permissions(target, overwrite=None)
+        await message.channel.purge()
 
     @staticmethod
     async def send_error(channel, message):
