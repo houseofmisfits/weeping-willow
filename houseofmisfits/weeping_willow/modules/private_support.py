@@ -76,7 +76,7 @@ class PrivateSupport(Module):
             )
             return True
         try:
-            user = self.get_user(args[2])
+            user = self.get_user(' '.join(args[2:]))
             support_role = await self.client.get_config('support_role_id')
             await message.delete()
             await message.channel.set_permissions(user, send_messages=True, read_messages=True)
