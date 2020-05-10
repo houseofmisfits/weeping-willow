@@ -1,3 +1,4 @@
+import os
 from typing import AsyncIterable
 
 from houseofmisfits.weeping_willow.modules import Module
@@ -5,6 +6,7 @@ from houseofmisfits.weeping_willow.triggers import Trigger, Command
 
 import discord
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -65,7 +67,43 @@ class PrivateSupport(Module):
         return False
 
     async def open_session(self, args, message):
-        pass
+        if len(args) < 3:
+            await self.send_error(
+                message.channel,
+                "Please let me know who you want to open a session with. `{} {} {{user}}`".format(
+                    *args[0:2]
+                )
+            )
+            return True
+        try:
+            user = self.get_user(args[2])
+            support_role = await self.client.get_config('support_role_id')
+            await message.channel.set_permissions(user, send_messages=True, read_messages=True)
+            await message.channel.send("Hi <@!{}>, I see you need support right now. Our <@&{}> "
+                                       "team will try to get to you soon, but in the meantime please state as much "
+                                       "information as you can so that a suitable support member can assist you. "
+                                       "Remember, "
+                                       "we are volunteers, not professionals. Note please do not double ping it will "
+                                       "not get "
+                                       "anyone there faster.".format(user.id, support_role))
+        except ValueError:
+            await self.send_error(
+                message.channel,
+                "I couldn't recognize `{}` as a user. Try copying their user ID.".format(
+                    args[2]
+                )
+            )
+
+    def get_user(self, user_str):
+        match = re.search("^(?:<@!?)?(\\d+)>?$", user_str)
+        if match:
+            return self.client.get_user(int(match.group(1)))
+        guild_id = os.getenv('BOT_GUILD_ID')
+        guild = self.client.get_guild(int(guild_id))
+        for member in guild.members:
+            if user_str in [member.name, member.name + '#' + member.discriminator, member.nick]:
+                return member
+        raise ValueError()
 
     async def close_session(self, args, message):
         pass
