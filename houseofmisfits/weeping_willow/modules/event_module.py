@@ -187,10 +187,10 @@ class EventModule(Module):
             while test_date.weekday() != weekday:
                 test_date = test_date - timedelta(days=1)
             event_date = test_date
-        except ValueError():
+        except ValueError:
             try:
                 event_date = date.fromisoformat(args[2])
-            except ValueError():
+            except ValueError:
                 await self.send_error(
                     message.channel,
                     "Could not understand {} as date or day of week."
@@ -280,7 +280,7 @@ class EventModule(Module):
         return trigger
 
     async def clear_participant_role(self):
-        logger.info("Clearing participant role")
+        logger.debug("Clearing participant role")
         participant_role = await self.get_participant_role()
         for user in participant_role.members:
             await user.remove_roles(participant_role)
@@ -298,6 +298,8 @@ class EventModule(Module):
         if str(message.channel.id) != self.trigger.trigger_value:
             return False
         if EventModule.get_est_time(message).time() < time(6) or EventModule.get_est_time(message).time() > time(18):
+            return False
+        if message.author.bot:
             return False
         self.client.loop.create_task(self.update_participant_database(message))
         if not self.backdated:
@@ -320,7 +322,9 @@ class EventModule(Module):
     async def add_participant_role(self, user):
         member = self.client.guild.get_member(user.id)
         if member is None:
-            return   # webhooks, users who left, etc.
+            logger.debug("User {} is not a valid member - skipping".format(user.id))
+            return
+        logger.debug("Giving user {} the participant role".format(member.id))
         await member.add_roles(await self.get_participant_role())
 
     async def get_participant_role(self):
@@ -359,7 +363,7 @@ class EventModule(Module):
         async with self.client.data_connection.pool.acquire() as conn:
             results = await conn.fetch(
                 "SELECT member_id FROM event_participants WHERE participation_dt = $1", event_date)
-            return [int(result['member_id']) for result in results] if results else []
+            return [int(result['member_id']) for result in results] if results is not None else []
 
     async def get_event_channel(self, weekday):
         async with self.client.data_connection.pool.acquire() as conn:

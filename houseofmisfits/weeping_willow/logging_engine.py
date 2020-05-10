@@ -28,8 +28,9 @@ class LoggingEngine(logging.StreamHandler):
         self.channel = None
 
     async def setup(self):
-        self.channel = int(await self.client.get_config('logging_channel'))
-        if self.channel is not None:
+        channel_id = await self.client.get_config('logging_channel')
+        if channel_id is not None:
+            self.channel = int(channel_id)
             level_name = (await self.client.get_config('log_level', 'INFO')).upper()
             self.setLevel(LoggingEngine.LOG_LEVELS[level_name])
             self.open = True

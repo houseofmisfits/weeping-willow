@@ -99,8 +99,12 @@ class WeepingWillowClient(discord.Client):
                         message, triggered_fn.__module__
                     )
                 )
-                if await triggered_fn(message):
-                    return
+                # noinspection PyBroadException
+                try:
+                    if await triggered_fn(message):
+                        return
+                except Exception as e:
+                    logger.error("Trigger threw unhandled exception.", exc_info=True)
                 # noinspection PyUnresolvedReferences
                 logger.debug("Message {0.id}: {1} did not report successful processing. Continuing processing.".format(
                     message, triggered_fn.__module__
