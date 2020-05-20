@@ -37,9 +37,9 @@ pipeline {
         POSTGRES_HOST = 'postgres'
         BOT_CLIENT_ID = '653430328177852416'
         BOT_CLIENT_TOKEN = credentials('willow_bot_token')
-        BOT_GUILD_ID = '419896766314446868'
-        BOT_TECH_ROLE = '430700713794863104'
-        BOT_ADMIN_ROLE = '493804274380439572'
+        BOT_GUILD_ID = '711784672123813918'
+        BOT_TECH_ROLE = '711784672182534189'
+        BOT_ADMIN_ROLE = '711784672182534192'
       }
       steps {
         sh 'docker-compose down'
